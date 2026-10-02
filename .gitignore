@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+*.log
+.DS_Store
+
+# Kubernetes local/generated files
+*.kubeconfig
+
+# Editor/OS files
+.vscode/
+.idea/
