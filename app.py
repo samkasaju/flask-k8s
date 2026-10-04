@@ -1,19 +1,22 @@
-from flask import Flask
+from flask import Flask, render_template
 import os
 
 app = Flask(__name__)
 
+
 @app.route("/")
 def home():
-    return (
-        f"Hello from Flask! "
-        f"ENV={os.getenv('APP_ENV', 'unset')} "
-        f"MESSAGE={os.getenv('APP_MESSAGE', 'unset')}"
+    return render_template(
+        "index.html",
+        environment=os.getenv("APP_ENV", "local"),
+        message=os.getenv("APP_MESSAGE", "Hello from Flask"),
     )
+
 
 @app.route("/health")
 def health():
     return "ok", 200
+
 
 @app.route("/cpu")
 def cpu():

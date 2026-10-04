@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Flask Kubernetes Dashboard</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+</head>
+
+<body>
+
+    <div class="container">
+
+        <header>
+            <div class="badge">● RUNNING</div>
+
+            <h1>Flask Kubernetes Dashboard</h1>
+
+            <p>
+                A containerized Flask application deployed with
+                Docker and Kubernetes.
+            </p>
+        </header>
+
+
+        <section class="cards">
+
+            <div class="card">
+                <span class="icon">🐍</span>
+                <h2>Flask</h2>
+                <p>Python web application framework</p>
+            </div>
+
+            <div class="card">
+                <span class="icon">📦</span>
+                <h2>Docker</h2>
+                <p>Application containerization</p>
+            </div>
+
+            <div class="card">
+                <span class="icon">☸️</span>
+                <h2>Kubernetes</h2>
+                <p>Container orchestration and scaling</p>
+            </div>
+
+            <div class="card">
+                <span class="icon">🔄</span>
+                <h2>Jenkins</h2>
+                <p>Continuous integration and deployment</p>
+            </div>
+
+        </section>
+
+
+        <section class="status">
+
+            <h2>Application Status</h2>
+
+            <div class="status-row">
+                <span>Environment</span>
+                <strong>{{ environment }}</strong>
+            </div>
+
+            <div class="status-row">
+                <span>Health</span>
+                <strong class="healthy">Healthy</strong>
+            </div>
+
+            <div class="status-row">
+                <span>Message</span>
+                <strong>{{ message }}</strong>
+            </div>
+
+        </section>
+
+
+        <section class="architecture">
+
+            <h2>Deployment Pipeline</h2>
+
+            <div class="pipeline">
+
+                <div>Flask</div>
+                <span>→</span>
+                <div>Docker</div>
+                <span>→</span>
+                <div>Kubernetes</div>
+                <span>→</span>
+                <div>Jenkins</div>
+
+            </div>
+
+        </section>
+
+
+        <footer>
+            <p>
+                Flask + Docker + Kubernetes + Jenkins
+            </p>
+        </footer>
+
+    </div>
+
+</body>
+</html>
