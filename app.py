@@ -9,7 +9,7 @@ def home():
     return render_template(
         "index.html",
         environment=os.getenv("APP_ENV", "local"),
-        message=os.getenv("APP_MESSAGE", "Hello from Flask"),
+        message=os.getenv("APP_MESSAGE", "Hello from Flask - CI/CD is working!"),
     )
 
 
