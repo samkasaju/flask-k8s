@@ -9,6 +9,13 @@ RUN apt-get update \
         python3 \
         python3-venv \
         python3-pip \
+        gnupg \
+        lsb-release \
+    \
+    # Install Azure CLI
+    && curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
+    \
+    # Install Docker CLI
     && install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/debian/gpg \
        -o /etc/apt/keyrings/docker.asc \
@@ -19,12 +26,18 @@ RUN apt-get update \
        > /etc/apt/sources.list.d/docker.list \
     && apt-get update \
     && apt-get install -y docker-ce-cli \
+    \
+    # Install kind
     && curl -Lo /usr/local/bin/kind \
        https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64 \
     && chmod +x /usr/local/bin/kind \
+    \
+    # Install kubectl
     && curl -Lo /tmp/kubectl \
        https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl \
     && install -o root -g root -m 0755 /tmp/kubectl /usr/local/bin/kubectl \
     && rm /tmp/kubectl \
+    \
+    # Cleanup
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

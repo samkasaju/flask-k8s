@@ -5,8 +5,16 @@ pipeline {
         IMAGE_NAME = "flask-app"
         IMAGE_TAG = "${BUILD_NUMBER}"
 
-        // Change this to your Docker Hub repository
+        // Docker Hub
         DOCKERHUB_REPO = "samkasaju/flask-app"
+
+        // Azure Container Registry
+        ACR_LOGIN_SERVER = "flaskk8sacr1790962364.azurecr.io"
+        ACR_REPO = "flaskk8sacr1790962364.azurecr.io/flask-app"
+
+        // Azure Container Apps
+        RESOURCE_GROUP = "flask-k8s-rg"
+        CONTAINER_APP = "flask-app"
     }
 
     stages {
@@ -83,13 +91,106 @@ pipeline {
             }
         }
 
-        stage('Verify Deployment') {
+        stage('Verify Kubernetes Deployment') {
             steps {
                 sh '''
                     kubectl get pods
                     kubectl get deployment flask-app
                     kubectl get service flask-service
                 '''
+            }
+        }
+
+        stage('Push to Azure Container Registry') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'azure-sp',
+                        usernameVariable: 'AZURE_CLIENT_ID',
+                        passwordVariable: 'AZURE_CLIENT_SECRET'
+                    ),
+                    string(
+                        credentialsId: 'azure-tenant-id',
+                        variable: 'AZURE_TENANT_ID'
+                    )
+                ]) {
+                    sh '''
+                        az login \
+                            --service-principal \
+                            --username "$AZURE_CLIENT_ID" \
+                            --password "$AZURE_CLIENT_SECRET" \
+                            --tenant "$AZURE_TENANT_ID"
+
+                        az acr login \
+                            --name flaskk8sacr1790962364
+
+                        docker tag \
+                            ${IMAGE_NAME}:${IMAGE_TAG} \
+                            ${ACR_REPO}:${IMAGE_TAG}
+
+                        docker push \
+                            ${ACR_REPO}:${IMAGE_TAG}
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to Azure Container Apps') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'azure-sp',
+                        usernameVariable: 'AZURE_CLIENT_ID',
+                        passwordVariable: 'AZURE_CLIENT_SECRET'
+                    ),
+                    string(
+                        credentialsId: 'azure-tenant-id',
+                        variable: 'AZURE_TENANT_ID'
+                    )
+                ]) {
+                    sh '''
+                        az login \
+                            --service-principal \
+                            --username "$AZURE_CLIENT_ID" \
+                            --password "$AZURE_CLIENT_SECRET" \
+                            --tenant "$AZURE_TENANT_ID"
+
+                        az containerapp update \
+                            --name "$CONTAINER_APP" \
+                            --resource-group "$RESOURCE_GROUP" \
+                            --image "${ACR_REPO}:${IMAGE_TAG}"
+                    '''
+                }
+            }
+        }
+
+        stage('Verify Azure Deployment') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'azure-sp',
+                        usernameVariable: 'AZURE_CLIENT_ID',
+                        passwordVariable: 'AZURE_CLIENT_SECRET'
+                    ),
+                    string(
+                        credentialsId: 'azure-tenant-id',
+                        variable: 'AZURE_TENANT_ID'
+                    )
+                ]) {
+                    sh '''
+                        az login \
+                            --service-principal \
+                            --username "$AZURE_CLIENT_ID" \
+                            --password "$AZURE_CLIENT_SECRET" \
+                            --tenant "$AZURE_TENANT_ID"
+
+                        az containerapp show \
+                            --name "$CONTAINER_APP" \
+                            --resource-group "$RESOURCE_GROUP" \
+                            --query "{name:name,provisioningState:properties.provisioningState,runningStatus:properties.runningStatus}" \
+                            -o table
+                    '''
+                }
             }
         }
     }
