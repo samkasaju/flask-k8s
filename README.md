@@ -1,128 +1,137 @@
-# Flask Kubernetes and Azure Container Apps Deployment
+# Flask Kubernetes & Azure Container Apps CI/CD
 
-A containerized Flask application deployed locally with Kubernetes (Kind) and in Azure using Azure Container Registry (ACR) and Azure Container Apps.
+A containerized Flask application demonstrating an end-to-end **DevOps and CI/CD workflow** using GitHub, Jenkins, Docker, Kubernetes (Kind), Azure Container Registry (ACR), and Azure Container Apps.
 
-## Project Overview
+The project starts with a Flask application stored in GitHub and uses Jenkins to automatically test, build, publish, and deploy the application.
 
-This project demonstrates a basic DevOps and container orchestration workflow:
+---
 
-1. Build a Flask application.
-2. Containerize it using Docker.
-3. Run the application locally.
-4. Deploy it to a local Kubernetes cluster using Kind.
-5. Configure Kubernetes resources:
-
-   * Deployment
-   * Service
-   * ConfigMap
-   * Secret
-   * Resource requests and limits
-   * Readiness probe
-   * Liveness probe
-   * Horizontal Pod Autoscaler (HPA)
-6. Store the container image in Azure Container Registry.
-7. Deploy the application to Azure Container Apps.
-8. Expose the application through a public HTTPS endpoint.
-
-## Architecture
-
-### Local Kubernetes
+## CI/CD Architecture
 
 ```text
-Flask Application
-       |
-       v
-   Docker Image
-       |
-       v
-Kind Kubernetes Cluster
-       |
-       +-- Deployment
-       |     +-- Pod 1
-       |     +-- Pod 2
-       |
-       +-- Service
-       |
-       +-- ConfigMap
-       |
-       +-- Secret
-       |
-       +-- Readiness Probe
-       |
-       +-- Liveness Probe
-       |
-       +-- Resource Requests/Limits
-       |
-       +-- Metrics Server
-       |
-       +-- HPA (2-5 replicas)
+                         GitHub
+                           |
+                           v
+                        Jenkins
+                           |
+             +-------------+-------------+
+             |             |             |
+             v             v             v
+          Checkout       Tests       Docker Build
+                                         |
+                                         v
+                              +----------+----------+
+                              |                     |
+                              v                     v
+                         Docker Hub                 ACR
+                              |                     |
+                              v                     v
+                       Kind Kubernetes      Azure Container Apps
+                              |                     |
+                              v                     v
+                         Local App            Public HTTPS App
 ```
 
-### Azure
+### Pipeline Flow
 
 ```text
-Flask Application
-       |
-       v
-   Docker Image
-       |
-       v
-Azure Container Registry
-       |
-       | flask-app:2.0
-       v
-Azure Container Apps
-       |
-       v
-Public HTTPS Endpoint
+GitHub
+  |
+  v
+Jenkins
+  |
+  +--> Checkout source code
+  |
+  +--> Install Python dependencies
+  |
+  +--> Run pytest
+  |
+  +--> Build Docker image
+  |
+  +--> Push image to Docker Hub
+  |
+  +--> Load image into Kind
+  |
+  +--> Deploy to Kubernetes
+  |
+  +--> Verify Kubernetes deployment
+  |
+  +--> Push image to Azure Container Registry
+  |
+  +--> Deploy image to Azure Container Apps
+  |
+  +--> Verify Azure deployment
 ```
 
-## Project Structure
+---
+
+# Project Overview
+
+This project demonstrates a complete containerized application deployment workflow.
+
+The project includes:
+
+* Flask application development
+* Python dependency management
+* Docker containerization
+* Local Docker testing
+* Kubernetes deployment using Kind
+* Kubernetes Deployment
+* Kubernetes Service
+* Kubernetes ConfigMap
+* Kubernetes Secret
+* Resource requests and limits
+* Readiness probes
+* Liveness probes
+* Kubernetes Metrics Server
+* Horizontal Pod Autoscaling (HPA)
+* Docker Hub image publishing
+* Azure Container Registry
+* Azure Container Apps
+* Jenkins CI/CD
+* GitHub source-code integration
+* Automated Kubernetes deployment
+* Automated Azure deployment
+* Public HTTPS application hosting
+
+---
+
+# Application
+
+The Flask application provides three endpoints.
+
+## `/`
+
+Displays the Flask application dashboard.
+
+The application receives its environment and message from environment variables.
 
 ```text
-flask-k8s/
-├── app.py
-├── requirements.txt
-├── Dockerfile
-├── k8s.yaml
-├── .gitignore
-└── README.md
+APP_ENV
+APP_MESSAGE
 ```
 
-## Prerequisites
+Example Kubernetes configuration:
 
-The project was developed on Ubuntu 24.04.
+```text
+APP_ENV=kubernetes
+APP_MESSAGE=Hello from Kubernetes
+```
 
-Required tools:
+Example Azure configuration:
 
-* Python 3
-* Docker
-* kubectl
-* Kind
-* Azure CLI
-* Git
+```text
+APP_ENV=azure
+APP_MESSAGE=Hello from Azure Container Apps
+```
 
-Check the installations:
+## `/health`
+
+Health-check endpoint used by Kubernetes.
 
 ```bash
-docker --version
-kubectl version --client
-kind version
-az version
-git --version
+curl http://localhost:5000/health
 ```
-
-## 1. Flask Application
-
-The Flask application contains three endpoints.
-
-### `/`
-
-Returns the application message and environment variables.
-
-### `/health`
-
-Used by Kubernetes for readiness and liveness checks.
 
 Expected response:
 
@@ -130,19 +139,154 @@ Expected response:
 ok
 ```
 
-### `/cpu`
+The same endpoint is available on Azure:
 
-Performs a CPU-intensive calculation. This endpoint can be used to generate CPU load when testing autoscaling.
+```bash
+curl https://flask-app.delightfulwater-b02b5bef.centralindia.azurecontainerapps.io/health
+```
 
-## 2. Docker
+## `/cpu`
 
-Build the Docker image:
+Performs a CPU-intensive calculation.
+
+This endpoint is useful for generating CPU load while testing Kubernetes Horizontal Pod Autoscaling.
+
+---
+
+# Project Structure
+
+```text
+flask-k8s/
+│
+├── app.py
+├── requirements.txt
+├── Dockerfile
+├── Jenkins.Dockerfile
+├── Jenkinsfile
+├── k8s.yaml
+├── README.md
+├── .gitignore
+│
+├── templates/
+│   └── index.html
+│
+├── static/
+│   └── style.css
+│
+└── tests/
+    └── test_app.py
+```
+
+### Important files
+
+| File                   | Purpose                                                  |
+| ---------------------- | -------------------------------------------------------- |
+| `app.py`               | Flask application                                        |
+| `requirements.txt`     | Python dependencies                                      |
+| `Dockerfile`           | Application container image                              |
+| `Jenkins.Dockerfile`   | Custom Jenkins image with CI/CD tools                    |
+| `Jenkinsfile`          | Jenkins CI/CD pipeline                                   |
+| `k8s.yaml`             | Kubernetes resources                                     |
+| `templates/index.html` | Flask web dashboard                                      |
+| `static/style.css`     | Application styling                                      |
+| `tests/test_app.py`    | Automated tests                                          |
+| `.gitignore`           | Prevents unwanted files and secrets from being committed |
+| `README.md`            | Project documentation                                    |
+
+---
+
+# Prerequisites
+
+The project was developed on Ubuntu 24.04.
+
+Required tools include:
+
+* Python 3
+* Docker
+* kubectl
+* Kind
+* Azure CLI
+* Git
+* Jenkins
+
+Check the installations:
+
+```bash
+python3 --version
+docker --version
+kubectl version --client
+kind version
+az version
+git --version
+```
+
+---
+
+# 1. Flask Application
+
+The Flask application is defined in:
+
+```text
+app.py
+```
+
+Run the application locally:
+
+```bash
+python3 app.py
+```
+
+The application listens on:
+
+```text
+http://localhost:5000
+```
+
+Test the application:
+
+```bash
+curl http://localhost:5000/
+```
+
+Test the health endpoint:
+
+```bash
+curl http://localhost:5000/health
+```
+
+---
+
+# 2. Automated Tests
+
+The project uses `pytest` for automated testing.
+
+Install dependencies:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Run tests:
+
+```bash
+python -m pytest
+```
+
+Jenkins automatically performs this test stage before building the Docker image.
+
+---
+
+# 3. Docker
+
+Build the Docker image locally:
 
 ```bash
 docker build -t flask-app:1.0 .
 ```
 
-Run it locally:
+Run the container:
 
 ```bash
 docker run --rm -p 5000:5000 \
@@ -163,15 +307,23 @@ Health check:
 curl http://localhost:5000/health
 ```
 
-## 3. Create a Kind Kubernetes Cluster
+CPU endpoint:
 
-Create the cluster:
+```bash
+curl http://localhost:5000/cpu
+```
+
+---
+
+# 4. Create a Kind Kubernetes Cluster
+
+Create the local Kubernetes cluster:
 
 ```bash
 kind create cluster --name flask-k8s
 ```
 
-Verify:
+Verify the cluster:
 
 ```bash
 kubectl cluster-info
@@ -184,23 +336,17 @@ The Kubernetes context is:
 kind-flask-k8s
 ```
 
-## 4. Load the Docker Image into Kind
+---
 
-Load the locally built image into the Kind cluster:
+# 5. Kubernetes Configuration
 
-```bash
-kind load docker-image flask-app:1.0 --name flask-k8s
+The Kubernetes configuration is defined in:
+
+```text
+k8s.yaml
 ```
 
-Verify the local image:
-
-```bash
-docker images | grep flask-app
-```
-
-## 5. Deploy to Kubernetes
-
-The `k8s.yaml` file contains:
+It contains:
 
 * ConfigMap
 * Secret
@@ -214,29 +360,57 @@ Apply the configuration:
 kubectl apply -f k8s.yaml
 ```
 
-Verify:
+Verify the resources:
 
 ```bash
 kubectl get all
 ```
 
-## 6. ConfigMap
+---
 
-The ConfigMap provides the environment:
+# 6. Load the Docker Image into Kind
+
+Kind runs Kubernetes nodes inside Docker.
+
+Load the local Docker image into the cluster:
+
+```bash
+kind load docker-image flask-app:1.0 --name flask-k8s
+```
+
+Verify the local image:
+
+```bash
+docker images | grep flask-app
+```
+
+For Jenkins deployments, the pipeline automatically loads the build-number-tagged image into Kind.
+
+---
+
+# 7. Kubernetes ConfigMap
+
+The ConfigMap provides the application environment.
+
+Example:
 
 ```text
 APP_ENV=kubernetes
 ```
 
-View it:
+View the ConfigMap:
 
 ```bash
 kubectl get configmap flask-config -o yaml
 ```
 
-## 7. Secret
+---
 
-The Kubernetes Secret provides the application message:
+# 8. Kubernetes Secret
+
+The Kubernetes Secret provides the application message.
+
+Example:
 
 ```text
 APP_MESSAGE=Hello from Kubernetes
@@ -250,35 +424,92 @@ kubectl get secret flask-secret
 
 Do not store real production credentials directly in Git.
 
-## 8. Deployment
+The Secret used in this demonstration contains a sample application message rather than a production credential.
 
-The Deployment runs two replicas.
+---
 
-Check:
+# 9. Kubernetes Deployment
+
+The Deployment runs two Flask replicas.
+
+Check the Deployment:
 
 ```bash
 kubectl get deployment
+```
+
+Check the Pods:
+
+```bash
 kubectl get pods
 ```
 
-The final local deployment had two running Flask pods:
+The application container uses:
 
 ```text
-flask-app-69885967f4-6pg67   1/1   Running
-flask-app-69885967f4-x5qgx   1/1   Running
-```
-
-The container configuration includes:
-
-```text
-Image: flask-app:1.0
 Container port: 5000
 Image pull policy: IfNotPresent
 ```
 
-## 9. Resource Requests and Limits
+The initial local image can be:
 
-Each pod is configured with:
+```text
+flask-app:1.0
+```
+
+During CI/CD, Jenkins deploys images using the Jenkins build number.
+
+For example:
+
+```text
+flask-app:6
+```
+
+This provides a unique image tag for each Jenkins build.
+
+---
+
+# 10. Kubernetes Service
+
+The Kubernetes Service is:
+
+```text
+flask-service
+```
+
+Check it:
+
+```bash
+kubectl get service
+```
+
+Because Kind is a local Kubernetes cluster, an external cloud load balancer is not automatically created.
+
+Port-forward the Service:
+
+```bash
+kubectl port-forward service/flask-service 8081:80
+```
+
+The application can then be accessed at:
+
+```text
+http://localhost:8081
+```
+
+Test it:
+
+```bash
+curl http://localhost:8081/
+curl http://localhost:8081/health
+curl http://localhost:8081/cpu
+```
+
+---
+
+# 11. Resource Requests and Limits
+
+The Flask container uses Kubernetes resource requests and limits.
 
 ```yaml
 requests:
@@ -290,66 +521,50 @@ limits:
   memory: "256Mi"
 ```
 
-This allows Kubernetes to schedule the workload while limiting the maximum CPU and memory available to each container.
+The requests allow Kubernetes to determine the resources required to schedule the Pod.
 
-Inspect the deployment:
+The limits prevent a container from consuming unlimited CPU or memory.
+
+Inspect the Deployment:
 
 ```bash
 kubectl describe deployment flask-app
 ```
 
-## 10. Health Probes
+---
 
-The application exposes:
+# 12. Health Probes
+
+The Flask application exposes:
 
 ```text
 /health
 ```
 
-Kubernetes uses this endpoint for both:
+Kubernetes uses this endpoint for:
 
 * Readiness probe
 * Liveness probe
 
-Inspect a pod:
+Inspect a Pod:
 
 ```bash
 kubectl describe pod <POD_NAME>
 ```
 
-A readiness probe determines whether a pod is ready to receive traffic.
+### Readiness Probe
 
-A liveness probe helps Kubernetes detect an unhealthy container and restart it when necessary.
+The readiness probe determines whether a Pod is ready to receive traffic.
 
-## 11. Access the Application in Kind
+### Liveness Probe
 
-The Kubernetes Service is:
+The liveness probe allows Kubernetes to detect an unhealthy container and restart it when necessary.
 
-```text
-flask-service
-```
+---
 
-Kind runs locally inside Docker and does not automatically provide a cloud load balancer IP.
+# 13. Metrics Server
 
-Port-forward the Service:
-
-```bash
-kubectl port-forward service/flask-service 5000:80
-```
-
-Then test:
-
-```bash
-curl http://localhost:5000/
-curl http://localhost:5000/health
-curl http://localhost:5000/cpu
-```
-
-The Service showed `<pending>` for `EXTERNAL-IP`, which is expected for this local Kind setup.
-
-## 12. Metrics Server
-
-The HPA requires resource metrics.
+The Horizontal Pod Autoscaler requires resource metrics.
 
 Install Metrics Server:
 
@@ -357,7 +572,14 @@ Install Metrics Server:
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 ```
 
-For the Kind environment, the following arguments were added:
+For the Kind environment, configure Metrics Server with:
+
+```text
+--kubelet-insecure-tls
+--kubelet-preferred-address-types=InternalIP,Hostname
+```
+
+The configuration can be applied using:
 
 ```bash
 kubectl patch deployment metrics-server \
@@ -383,16 +605,20 @@ Restart Metrics Server:
 kubectl rollout restart deployment metrics-server -n kube-system
 ```
 
-Verify metrics:
+Verify:
 
 ```bash
 kubectl top nodes
 kubectl top pods
 ```
 
-## 13. Horizontal Pod Autoscaler
+---
 
-The project uses:
+# 14. Horizontal Pod Autoscaler
+
+The application uses a Horizontal Pod Autoscaler.
+
+Configuration:
 
 ```text
 Minimum replicas: 2
@@ -406,37 +632,263 @@ Check the HPA:
 kubectl get hpa
 ```
 
-The final local HPA showed:
+Example:
 
 ```text
 NAME        REFERENCE              TARGETS       MINPODS   MAXPODS   REPLICAS
 flask-hpa   Deployment/flask-app   cpu: 1%/50%   2         5         2
 ```
 
-Generate CPU load:
+---
+
+# 15. Test Kubernetes Autoscaling
+
+The `/cpu` endpoint can be used to generate CPU load.
+
+First make sure the application is accessible through the port-forward:
+
+```bash
+kubectl port-forward service/flask-service 8081:80
+```
+
+Generate load:
 
 ```bash
 for i in {1..1000}; do
-  curl -s http://localhost:5000/cpu > /dev/null &
+  curl -s http://localhost:8081/cpu > /dev/null &
 done
 wait
 ```
 
-Monitor autoscaling:
+Monitor the HPA:
 
 ```bash
 kubectl get hpa -w
 ```
 
-And:
+Monitor Pods:
 
 ```bash
 kubectl get pods -w
 ```
 
-## 14. Azure CLI
+The number of replicas can increase when CPU usage exceeds the configured target.
 
-Log in:
+---
+
+# 16. Jenkins CI/CD
+
+The project uses Jenkins to automate the complete deployment workflow.
+
+The Jenkins pipeline is defined in:
+
+```text
+Jenkinsfile
+```
+
+A custom Jenkins image is defined in:
+
+```text
+Jenkins.Dockerfile
+```
+
+The Jenkins image contains the tools required by the pipeline:
+
+* Python
+* pytest
+* Docker CLI
+* kubectl
+* Kind
+* Azure CLI
+
+---
+
+# 17. Jenkins Pipeline Stages
+
+The Jenkins pipeline contains the following stages:
+
+```text
+Checkout
+   |
+   v
+Test
+   |
+   v
+Build Docker Image
+   |
+   v
+Push to Docker Hub
+   |
+   v
+Load Image into Kind
+   |
+   v
+Deploy to Kubernetes
+   |
+   v
+Verify Kubernetes Deployment
+   |
+   v
+Push to Azure Container Registry
+   |
+   v
+Deploy to Azure Container Apps
+   |
+   v
+Verify Azure Deployment
+```
+
+### Checkout
+
+Jenkins checks out the source code from GitHub.
+
+### Test
+
+Jenkins creates a Python virtual environment, installs dependencies, and runs:
+
+```bash
+python -m pytest
+```
+
+### Build Docker Image
+
+The Docker image is built using the Jenkins build number.
+
+For example:
+
+```text
+flask-app:6
+```
+
+### Push to Docker Hub
+
+The image is tagged and pushed to:
+
+```text
+samkasaju/flask-app
+```
+
+using the Jenkins Docker Hub credential.
+
+### Load Image into Kind
+
+Jenkins loads the newly built image into the local Kind cluster:
+
+```bash
+kind load docker-image flask-app:<BUILD_NUMBER> --name flask-k8s
+```
+
+### Deploy to Kubernetes
+
+Jenkins updates the Kubernetes Deployment:
+
+```bash
+kubectl set image deployment/flask-app \
+  flask-app=flask-app:<BUILD_NUMBER>
+```
+
+Then Jenkins waits for the rollout:
+
+```bash
+kubectl rollout status deployment/flask-app
+```
+
+### Verify Kubernetes Deployment
+
+Jenkins verifies:
+
+```bash
+kubectl get pods
+kubectl get deployment flask-app
+kubectl get service flask-service
+```
+
+### Push to Azure Container Registry
+
+Jenkins authenticates with Azure and pushes the image to:
+
+```text
+flaskk8sacr1790962364.azurecr.io/flask-app
+```
+
+The same Jenkins build number is used as the image tag.
+
+For example:
+
+```text
+flaskk8sacr1790962364.azurecr.io/flask-app:6
+```
+
+### Deploy to Azure Container Apps
+
+Jenkins updates the Azure Container App to use the new ACR image.
+
+### Verify Azure Deployment
+
+Jenkins verifies that the Container App is:
+
+```text
+Provisioning State: Succeeded
+Running Status:     Running
+```
+
+---
+
+# 18. Jenkins Credentials
+
+The Jenkins pipeline uses credentials rather than hard-coding secrets.
+
+The configured credentials include:
+
+```text
+dockerhub-creds
+azure-sp
+azure-tenant-id
+```
+
+These credentials are referenced by the Jenkinsfile.
+
+Secrets are not stored directly inside the pipeline source code.
+
+### Important
+
+Never commit the following to GitHub:
+
+* Docker Hub passwords or access tokens
+* Azure service principal secrets
+* Azure credentials
+* ACR passwords
+* API keys
+* SSH private keys
+* `.env` files
+
+---
+
+# 19. Docker Hub
+
+The Jenkins pipeline publishes images to Docker Hub.
+
+Repository:
+
+```text
+samkasaju/flask-app
+```
+
+Images use Jenkins build numbers as tags.
+
+Example:
+
+```text
+samkasaju/flask-app:6
+```
+
+Using build numbers makes it possible to identify which Jenkins build produced a particular image.
+
+---
+
+# 20. Azure CLI
+
+Login to Azure:
 
 ```bash
 az login
@@ -448,7 +900,7 @@ Check the active subscription:
 az account show --output table
 ```
 
-The project used an Azure for Students subscription.
+The project was developed using an Azure for Students subscription.
 
 Set the main variables:
 
@@ -467,9 +919,25 @@ az group create \
   --location "$LOCATION"
 ```
 
-## 15. Azure Container Registry
+---
 
-Create ACR:
+# 21. Azure Container Registry
+
+The project uses Azure Container Registry to store images used by Azure Container Apps.
+
+The final ACR is:
+
+```text
+flaskk8sacr1790962364
+```
+
+Login server:
+
+```text
+flaskk8sacr1790962364.azurecr.io
+```
+
+Create an ACR:
 
 ```bash
 az acr create \
@@ -478,7 +946,7 @@ az acr create \
   --sku Basic
 ```
 
-Get the registry login server:
+Get the login server:
 
 ```bash
 export ACR_LOGIN_SERVER=$(az acr show \
@@ -494,32 +962,19 @@ Login:
 az acr login --name "$ACR_NAME"
 ```
 
-## 16. Build the Image in ACR
+---
 
-The registry ultimately contained:
+# 22. Azure Container Registry Image
 
-```text
-1.0
-1.1
-2.0
-```
+The Jenkins pipeline pushes the Docker image to ACR using the Jenkins build number.
 
-The final successfully deployed image was:
+Example:
 
 ```text
-flask-app:2.0
+flaskk8sacr1790962364.azurecr.io/flask-app:6
 ```
 
-The image was built in Azure using:
-
-```bash
-az acr build \
-  --registry "$ACR_NAME" \
-  --image flask-app:2.0 \
-  .
-```
-
-Verify the image tags:
+List image tags:
 
 ```bash
 az acr repository show-tags \
@@ -528,44 +983,53 @@ az acr repository show-tags \
   --output table
 ```
 
-## 17. AKS Attempt and Quota Limitation
+---
 
-An AKS cluster was attempted with:
+# 23. Azure Container Apps
 
-```bash
-az aks create \
-  --resource-group "$RESOURCE_GROUP" \
-  --name "$AKS_NAME" \
-  --node-count 1 \
-  --node-vm-size Standard_B2s \
-  --generate-ssh-keys \
-  --attach-acr "$ACR_NAME"
-```
+Azure Container Apps is the successful cloud deployment platform for this project.
 
-The cluster could not be created because the Azure for Students subscription did not have enough available regional vCPU quota.
-
-The returned error was:
+The Container Apps environment is:
 
 ```text
-(ErrCode_InsufficientVCPUQuota)
-Insufficient regional vcpu quota left for location centralindia.
-left regional vcpu quota 1, requested quota 2.
+flask-k8s-env
 ```
 
-Therefore, AKS was not used as the successful Azure deployment.
+The Container App is:
 
-The successful cloud deployment described below uses Azure Container Apps.
+```text
+flask-app
+```
 
-## 18. Azure Container Apps Environment
+The application runs in:
 
-Register the required providers:
+```text
+Central India
+```
+
+The Container App configuration includes:
+
+```text
+CPU:          0.5
+Memory:       1.0Gi
+Min replicas: 1
+Max replicas: 3
+Ingress:      External
+Target port:  5000
+```
+
+---
+
+# 24. Azure Container Apps Environment
+
+Register the required Azure providers:
 
 ```bash
 az provider register --namespace Microsoft.App
 az provider register --namespace Microsoft.OperationalInsights
 ```
 
-Create the environment:
+Create the Container Apps environment:
 
 ```bash
 export CONTAINERAPPS_ENVIRONMENT="flask-k8s-env"
@@ -576,9 +1040,13 @@ az containerapp env create \
   --location "$LOCATION"
 ```
 
-## 19. ACR Authentication
+---
 
-The Container Apps environment used registry credentials to pull the private ACR image.
+# 25. ACR Authentication
+
+The Container App needs permission to pull the private image from ACR.
+
+The deployment used ACR registry credentials.
 
 Enable ACR admin credentials:
 
@@ -589,7 +1057,7 @@ az acr update \
   --admin-enabled true
 ```
 
-Retrieve credentials into shell variables:
+Retrieve the credentials:
 
 ```bash
 export ACR_USERNAME=$(az acr credential show \
@@ -603,9 +1071,11 @@ export ACR_PASSWORD=$(az acr credential show \
   --output tsv)
 ```
 
-Do not print or commit the password.
+Do not print, commit, or share the password.
 
-## 20. Deploy to Azure Container Apps
+---
+
+# 26. Initial Azure Container App Deployment
 
 Set the Container App name:
 
@@ -613,7 +1083,7 @@ Set the Container App name:
 export CONTAINERAPP_NAME="flask-app"
 ```
 
-Deploy:
+The initial deployment can be performed with:
 
 ```bash
 az containerapp create \
@@ -635,9 +1105,49 @@ az containerapp create \
   --registry-password "$ACR_PASSWORD"
 ```
 
-## 21. Verify Azure Deployment
+After the initial deployment, Jenkins manages subsequent image updates automatically.
 
-Check the application:
+---
+
+# 27. Azure Container Apps CI/CD Deployment
+
+The Jenkins pipeline updates the Container App with the image produced by the current Jenkins build.
+
+Example:
+
+```bash
+az containerapp update \
+  --name flask-app \
+  --resource-group flask-k8s-rg \
+  --image flaskk8sacr1790962364.azurecr.io/flask-app:6
+```
+
+This means a successful Jenkins build can automatically promote the same application image from:
+
+```text
+GitHub
+   |
+   v
+Jenkins
+   |
+   v
+Docker Image
+   |
+   +--> Docker Hub
+   |
+   +--> Kind Kubernetes
+   |
+   +--> Azure Container Registry
+             |
+             v
+      Azure Container Apps
+```
+
+---
+
+# 28. Verify Azure Deployment
+
+Check the Container App:
 
 ```bash
 az containerapp show \
@@ -647,20 +1157,16 @@ az containerapp show \
   --output table
 ```
 
-Final result:
+Final application:
 
 ```text
 Name       Location       ProvisioningState
 flask-app  Central India  Succeeded
 ```
 
-Public hostname:
+---
 
-```text
-flask-app.delightfulwater-b02b5bef.centralindia.azurecontainerapps.io
-```
-
-## 22. Verify the Container App Revision
+# 29. Azure Container App Revision
 
 List revisions:
 
@@ -671,38 +1177,36 @@ az containerapp revision list \
   --output table
 ```
 
-Final revision:
+The final successful deployment used:
 
 ```text
-flask-app--latest
+Revision: flask-app--latest
 ```
 
-Final state:
+The final deployment state was:
 
 ```text
-Active:             True
-Replicas:           1
-Traffic Weight:     100
-Health State:       Healthy
-Provisioning State: Provisioned
+Active:              True
+Replicas:            1
+Traffic Weight:      100%
+Health State:        Healthy
+Provisioning State:  Provisioned
 ```
 
-## 23. Test the Public HTTPS Endpoint
+---
 
-Set the URL:
+# 30. Public Azure Endpoint
 
-```bash
-export APP_URL=$(az containerapp show \
-  --name "$CONTAINERAPP_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --query properties.configuration.ingress.fqdn \
-  --output tsv)
+The application is publicly available through HTTPS.
+
+```text
+https://flask-app.delightfulwater-b02b5bef.centralindia.azurecontainerapps.io
 ```
 
 Health check:
 
 ```bash
-curl "https://$APP_URL/health"
+curl https://flask-app.delightfulwater-b02b5bef.centralindia.azurecontainerapps.io/health
 ```
 
 Expected:
@@ -711,37 +1215,35 @@ Expected:
 ok
 ```
 
-Application endpoint:
-
-```bash
-curl "https://$APP_URL/"
-```
-
-Expected:
+Application:
 
 ```text
-Hello from Flask! ENV=azure MESSAGE=Hello from Azure Container Apps
+https://flask-app.delightfulwater-b02b5bef.centralindia.azurecontainerapps.io
+```
+
+The application is configured with:
+
+```text
+APP_ENV=azure
+APP_MESSAGE=Hello from Azure Container Apps
 ```
 
 CPU endpoint:
 
 ```bash
-curl "https://$APP_URL/cpu"
+curl https://flask-app.delightfulwater-b02b5bef.centralindia.azurecontainerapps.io/cpu
 ```
 
-The deployed application successfully returned:
+---
 
-```text
-41666654166667500000
-```
-
-## 24. Final Azure Resources
+# 31. Final Azure Resources
 
 ```text
 flask-k8s-rg
 │
 ├── Azure Container Registry
-│   └── flask-app:2.0
+│   └── flaskk8sacr1790962364
+│       └── flask-app:<BUILD_NUMBER>
 │
 ├── Container Apps Environment
 │   └── flask-k8s-env
@@ -750,7 +1252,43 @@ flask-k8s-rg
     └── flask-app
 ```
 
-## 25. Useful Kubernetes Commands
+---
+
+# 32. AKS Attempt and Quota Limitation
+
+An AKS deployment was also attempted.
+
+The command used was:
+
+```bash
+az aks create \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$AKS_NAME" \
+  --node-count 1 \
+  --node-vm-size Standard_B2s \
+  --generate-ssh-keys \
+  --attach-acr "$ACR_NAME"
+```
+
+The AKS cluster could not be created because the Azure for Students subscription did not have enough available regional vCPU quota.
+
+The Azure error indicated:
+
+```text
+(ErrCode_InsufficientVCPUQuota)
+Insufficient regional vcpu quota left for location centralindia.
+left regional vcpu quota 1, requested quota 2.
+```
+
+Therefore, AKS was **not used as the successful cloud deployment**.
+
+Instead, Azure Container Apps was used successfully.
+
+This is an important part of the project because it demonstrates adapting the deployment architecture to the resource limitations of the available Azure subscription.
+
+---
+
+# 33. Useful Kubernetes Commands
 
 Check nodes:
 
@@ -758,19 +1296,19 @@ Check nodes:
 kubectl get nodes
 ```
 
-Check pods:
+Check Pods:
 
 ```bash
 kubectl get pods
 ```
 
-Check services:
+Check Services:
 
 ```bash
 kubectl get svc
 ```
 
-Check deployments:
+Check Deployments:
 
 ```bash
 kubectl get deployments
@@ -801,13 +1339,13 @@ Follow logs:
 kubectl logs -f <POD_NAME>
 ```
 
-Describe a pod:
+Describe a Pod:
 
 ```bash
 kubectl describe pod <POD_NAME>
 ```
 
-Restart the deployment:
+Restart the Deployment:
 
 ```bash
 kubectl rollout restart deployment flask-app
@@ -819,7 +1357,9 @@ Check rollout status:
 kubectl rollout status deployment flask-app
 ```
 
-## 26. Useful Azure Commands
+---
+
+# 34. Useful Azure Commands
 
 List resources:
 
@@ -846,7 +1386,7 @@ az containerapp revision list \
   --output table
 ```
 
-List image tags:
+List ACR image tags:
 
 ```bash
 az acr repository show-tags \
@@ -863,43 +1403,66 @@ az vm list-usage \
   --output table
 ```
 
-## 27. Troubleshooting
+---
 
-### Metrics API unavailable
+# 35. Troubleshooting
 
-Install Metrics Server:
+## Metrics API unavailable
+
+Check Metrics Server:
 
 ```bash
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+kubectl get pods -n kube-system | grep metrics
 ```
 
-For Kind, add the required kubelet arguments and restart Metrics Server.
+Then:
 
-### Kind Service has `<pending>` external IP
+```bash
+kubectl top nodes
+kubectl top pods
+```
+
+If necessary, configure the Kind-specific kubelet arguments described in the Metrics Server section.
+
+---
+
+## Kind Service has `<pending>` external IP
 
 This is expected for a local Kind cluster.
 
 Use:
 
 ```bash
-kubectl port-forward service/flask-service 5000:80
+kubectl port-forward service/flask-service 8081:80
 ```
 
-### `ImagePullBackOff`
+Then access:
 
-For locally built images:
+```text
+http://localhost:8081
+```
+
+---
+
+## `ImagePullBackOff`
+
+For locally built images, make sure the image has been loaded into Kind:
 
 ```bash
 kind load docker-image flask-app:1.0 --name flask-k8s
 ```
 
-Then verify:
+Verify:
 
 ```bash
 docker images | grep flask-app
 ```
 
-### HPA shows `<unknown>`
+For Jenkins deployments, verify that the current build image was loaded into Kind.
+
+---
+
+## HPA shows `<unknown>`
 
 Check Metrics Server:
 
@@ -913,9 +1476,13 @@ Then:
 kubectl top pods
 ```
 
-### AKS creation fails because of quota
+If metrics are unavailable, check the Metrics Server configuration.
 
-Check:
+---
+
+## AKS creation fails because of quota
+
+Check the regional quota:
 
 ```bash
 az vm list-usage \
@@ -925,9 +1492,13 @@ az vm list-usage \
 
 If the subscription does not have sufficient quota, request additional quota or use a subscription with sufficient capacity.
 
-### Azure Container Apps revision fails
+For this project, Azure Container Apps was used instead.
 
-Check the revisions:
+---
+
+## Azure Container Apps revision fails
+
+Check revisions:
 
 ```bash
 az containerapp revision list \
@@ -945,26 +1516,78 @@ az acr repository show-tags \
   --output table
 ```
 
-## 28. Security Notes
+Also verify:
 
-Never commit:
+* ACR credentials
+* Container App target port
+* Container App ingress configuration
+* Container image tag
+* Azure Container App logs
 
+---
+
+# 36. Security
+
+Never commit sensitive information to GitHub.
+
+Do not commit:
+
+* Azure service principal secrets
 * Azure passwords
 * ACR passwords
+* Docker Hub access tokens
 * API keys
 * SSH private keys
 * `.env` files
 * Cloud credentials
+* Other production secrets
 
-The `.gitignore` file excludes common local secrets and environment files.
+Jenkins credentials are stored in Jenkins Credential Manager and referenced by credential IDs in the pipeline.
 
-The Kubernetes Secret in this demonstration contains a sample message rather than a production credential.
+The Kubernetes Secret in this demonstration contains a sample application message rather than a production credential.
 
-For production workloads, use a dedicated secret-management solution rather than committing sensitive values to Kubernetes manifests.
+For production environments, use a dedicated secret-management solution such as a cloud secret manager or Kubernetes-compatible secret-management system.
 
-## 29. Final Results
+---
 
-### Local Kubernetes
+# 37. CI/CD Security Model
+
+The Jenkins pipeline uses credentials for external services.
+
+The pipeline references:
+
+```text
+dockerhub-creds
+azure-sp
+azure-tenant-id
+```
+
+The credentials are not written directly into the `Jenkinsfile`.
+
+The Azure service principal is used by Jenkins to authenticate to Azure and perform the required deployment operations.
+
+This provides a basic separation between:
+
+```text
+Source Code
+     |
+     v
+Jenkins Pipeline
+     |
+     +--> Credentials
+     |
+     +--> Docker
+     |
+     +--> Kubernetes
+     |
+     +--> Azure
+```
+
+---
+
+# 38. Final Results
+
+## Local Kubernetes
 
 ```text
 Platform:        Kind Kubernetes
@@ -977,30 +1600,131 @@ Metrics Server:  Working
 Health probes:   Enabled
 ```
 
-### Azure
+## Docker Hub
+
+```text
+Repository:      samkasaju/flask-app
+Image tags:      Jenkins build numbers
+Example:         flask-app:6
+```
+
+## Azure
 
 ```text
 Registry:        Azure Container Registry
-Image:           flask-app:2.0
+Registry:        flaskk8sacr1790962364.azurecr.io
+Image:           flask-app:<BUILD_NUMBER>
 Platform:        Azure Container Apps
+Environment:     flask-k8s-env
 Region:          Central India
 Replicas:        1
+Max replicas:    3
 Revision:        flask-app--latest
 Health:          Healthy
 Provisioning:    Provisioned
 Ingress:         HTTPS
 ```
 
-### Public Endpoint
+## Jenkins
 
-https://flask-app.delightfulwater-b02b5bef.centralindia.azurecontainerapps.io
+```text
+Pipeline:        flask-k8s-pipeline
+Source:          GitHub
+Build System:    Jenkins
+Testing:         pytest
+Container Build: Docker
+Local Deployment: Kind Kubernetes
+Cloud Registry:  Azure Container Registry
+Cloud Platform:  Azure Container Apps
+```
 
-## Conclusion
+---
 
-This project demonstrates the path from a Flask application to a Docker container, a local Kubernetes deployment, and a public Azure deployment.
+# 39. End-to-End Deployment Flow
 
-The local Kubernetes environment demonstrates Deployments, Services, ConfigMaps, Secrets, health probes, resource management, Metrics Server, and Horizontal Pod Autoscaling.
+The final architecture can be summarized as:
 
-The Azure portion demonstrates Azure Container Registry and Azure Container Apps.
+```text
+                    GitHub
+                      |
+                      v
+                   Jenkins
+                      |
+             +--------+--------+
+             |                 |
+             v                 v
+          pytest          Docker Build
+                               |
+                               v
+                        flask-app:<BUILD>
+                               |
+                 +-------------+-------------+
+                 |                           |
+                 v                           v
+             Docker Hub                    ACR
+                 |                           |
+                 v                           v
+          Kind Kubernetes          Azure Container Apps
+                 |                           |
+                 v                           v
+           Local Flask App            Public HTTPS App
+```
 
-An AKS deployment was attempted, but the Azure for Students subscription's available regional vCPU quota prevented the AKS cluster from being created. Azure Container Apps was therefore used for the successful cloud deployment.
+The same application source code is therefore tested and packaged once by Jenkins and then deployed to both the local Kubernetes environment and Azure.
+
+---
+
+# 40. Conclusion
+
+This project demonstrates an end-to-end DevOps workflow starting from application source code in GitHub and ending with an automatically deployed cloud application.
+
+The local Kubernetes environment demonstrates:
+
+* Docker containerization
+* Kubernetes Deployments
+* Kubernetes Services
+* ConfigMaps
+* Secrets
+* Resource requests and limits
+* Readiness probes
+* Liveness probes
+* Metrics Server
+* Horizontal Pod Autoscaling
+
+The CI/CD implementation demonstrates:
+
+* GitHub integration
+* Jenkins Pipeline
+* Automated testing
+* Docker image creation
+* Docker Hub publishing
+* Automated Kind deployment
+* Azure Container Registry publishing
+* Automated Azure Container Apps deployment
+* Deployment verification
+
+The Azure implementation demonstrates:
+
+* Azure Container Registry
+* Azure Container Apps
+* Public HTTPS ingress
+* Container App revisions
+* Cloud deployment using a private container registry
+
+An AKS deployment was attempted but could not be completed because the Azure for Students subscription did not have sufficient regional vCPU quota in Central India.
+
+Azure Container Apps was therefore selected as the successful cloud deployment platform.
+
+The final result is a working Flask application with a complete **GitHub → Jenkins → Docker → Kubernetes → Azure** CI/CD workflow.
+
+---
+
+# Author
+
+**Sam Kasaju**
+
+GitHub repository:
+
+```text
+https://github.com/samkasaju/flask-k8s
+
