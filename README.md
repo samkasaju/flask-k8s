@@ -1402,6 +1402,615 @@ az vm list-usage \
   --location "$LOCATION" \
   --output table
 ```
+# 15. Prometheus and Grafana Monitoring
+
+The project also includes Kubernetes monitoring using **Prometheus and Grafana**.
+
+Prometheus collects and stores Kubernetes metrics, while Grafana provides dashboards and alerting based on those metrics.
+
+The monitoring architecture is:
+
+```text
+                    Flask Application
+                           |
+                           v
+                    Kind Kubernetes
+                           |
+                           v
+                      Prometheus
+                           |
+                           v
+                        Grafana
+                           |
+                    +------+------+
+                    |             |
+                    v             v
+                Dashboard      CPU Alert
+```
+
+## Monitoring Components
+
+The monitoring stack was installed using the Prometheus Community Helm chart:
+
+```text
+kube-prometheus-stack
+```
+
+The stack provides:
+
+* Prometheus
+* Grafana
+* Alertmanager
+* Prometheus Operator
+* kube-state-metrics
+* node-exporter
+
+The monitoring components run in a dedicated Kubernetes namespace:
+
+```text
+monitoring
+```
+
+---
+
+## 15.1 Install Helm
+
+Helm is used to install and manage the Prometheus and Grafana stack.
+
+Check Helm:
+
+```bash
+helm version
+```
+
+Install Helm on Ubuntu if required:
+
+```bash
+sudo snap install helm --classic
+```
+
+---
+
+## 15.2 Add the Prometheus Community Repository
+
+Add the Helm repository:
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+```
+
+Update the repository:
+
+```bash
+helm repo update
+```
+
+---
+
+## 15.3 Install kube-prometheus-stack
+
+Create the monitoring namespace and install the stack:
+
+```bash
+helm install monitoring prometheus-community/kube-prometheus-stack \
+  -n monitoring \
+  --create-namespace
+```
+
+Check the monitoring components:
+
+```bash
+kubectl get pods -n monitoring
+```
+
+Expected components include:
+
+```text
+Alertmanager
+Grafana
+Prometheus
+Prometheus Operator
+kube-state-metrics
+node-exporter
+```
+
+Check the services:
+
+```bash
+kubectl get svc -n monitoring
+```
+
+---
+
+## 15.4 Verify Prometheus
+
+Prometheus can be accessed locally using port forwarding.
+
+Run:
+
+```bash
+kubectl port-forward -n monitoring \
+  svc/monitoring-kube-prometheus-prometheus 9090:9090
+```
+
+Prometheus is then available at:
+
+```text
+http://localhost:9090
+```
+
+Prometheus was used to query Kubernetes container CPU metrics.
+
+---
+
+## 15.5 Verify Grafana
+
+Grafana can be accessed through port forwarding:
+
+```bash
+kubectl port-forward -n monitoring \
+  svc/monitoring-grafana 3000:80
+```
+
+Grafana is then available at:
+
+```text
+http://localhost:3000
+```
+
+The Grafana administrator password is stored in the Kubernetes Secret and should not be committed to GitHub.
+
+Retrieve it when required:
+
+```bash
+kubectl get secret -n monitoring monitoring-grafana \
+  -o jsonpath="{.data.admin-password}" | base64 -d
+```
+
+The default administrator username is:
+
+```text
+admin
+```
+
+Do not place the password in this repository.
+
+---
+
+## 15.6 Kubernetes Metrics vs Prometheus
+
+Two different monitoring mechanisms were used during the project.
+
+### Metrics Server
+
+The Kubernetes Metrics Server provides short-term resource usage information used by commands such as:
+
+```bash
+kubectl top pods
+```
+
+For example:
+
+```bash
+kubectl top pods
+```
+
+can show CPU and memory usage for the Flask Pods.
+
+### Prometheus
+
+Prometheus collects and stores time-series metrics.
+
+Prometheus was used for the Grafana monitoring and alerting implementation.
+
+This distinction is important:
+
+```text
+Metrics Server
+     |
+     +--> kubectl top pods
+     |
+     +--> HPA resource metrics
+
+
+Prometheus
+     |
+     +--> Historical metrics
+     |
+     +--> PromQL queries
+     |
+     +--> Grafana dashboards
+     |
+     +--> Grafana alerts
+```
+
+---
+
+## 15.7 Flask CPU Monitoring
+
+The Flask application's Kubernetes container CPU usage was monitored using the Prometheus metric:
+
+```text
+container_cpu_usage_seconds_total
+```
+
+The following PromQL query was used:
+
+```promql
+100 * sum by (namespace) (
+  rate(container_cpu_usage_seconds_total{
+    namespace="default",
+    container="flask-app"
+  }[5m])
+)
+```
+
+### What the query does
+
+`container_cpu_usage_seconds_total` is a cumulative CPU usage counter.
+
+The `rate()` function calculates the CPU usage rate over the previous five minutes:
+
+```promql
+rate(...[5m])
+```
+
+The results are then combined across the Flask application Pods:
+
+```promql
+sum by (namespace)
+```
+
+Finally, the value is multiplied by 100 to express CPU usage as a percentage of one CPU core:
+
+```promql
+100 * ...
+```
+
+This allows the monitoring system to calculate the combined CPU usage of the Flask application without relying on individual Pod names.
+
+---
+
+## 15.8 Testing CPU Usage
+
+The Flask application contains a `/cpu` endpoint that performs a CPU-intensive calculation.
+
+The endpoint can be accessed with:
+
+```bash
+curl http://localhost:5000/cpu
+```
+
+For Kubernetes monitoring, CPU usage can also be observed using:
+
+```bash
+kubectl top pods
+```
+
+Example:
+
+```text
+NAME                         CPU
+flask-app-xxxxx              500m
+```
+
+A value such as:
+
+```text
+500m
+```
+
+means approximately:
+
+```text
+0.5 CPU core
+```
+
+---
+
+## 15.9 Deliberately Generating CPU Load
+
+To test the Prometheus and Grafana alerting system, CPU load was deliberately generated inside a Flask Pod.
+
+First identify the Flask Pods:
+
+```bash
+kubectl get pods
+```
+
+Enter a Flask Pod:
+
+```bash
+kubectl exec -it <POD_NAME> -- /bin/bash
+```
+
+A CPU-intensive Python loop can then be started:
+
+```bash
+python -c "while True: pass"
+```
+
+This continuously consumes CPU.
+
+The CPU usage can be monitored with:
+
+```bash
+kubectl top pods
+```
+
+and through the Prometheus query described above.
+
+The test should be stopped with:
+
+```text
+Ctrl+C
+```
+
+after the alert has been verified.
+
+---
+
+## 15.10 Grafana CPU Alert
+
+A Grafana alert was created for the Flask application's combined CPU usage.
+
+Alert name:
+
+```text
+Flask High CPU
+```
+
+The alert uses the Prometheus CPU query:
+
+```promql
+100 * sum by (namespace) (
+  rate(container_cpu_usage_seconds_total{
+    namespace="default",
+    container="flask-app"
+  }[5m])
+)
+```
+
+The alert was configured with a CPU threshold and a pending period so that a short CPU spike does not immediately trigger an alert.
+
+The alert configuration includes:
+
+```text
+Alert name:       Flask High CPU
+Evaluation:       Every 1 minute
+Pending period:   2 minutes
+```
+
+The notification contact point is:
+
+```text
+Flask Alert Contact
+```
+
+The alert summary is:
+
+```text
+Flask application CPU is high
+```
+
+---
+
+## 15.11 Alert Testing
+
+The alert was initially configured with a higher threshold for normal operation.
+
+For testing, the threshold was temporarily reduced to:
+
+```text
+20%
+```
+
+while the Flask Pod was generating CPU load.
+
+Prometheus reported approximately:
+
+```text
+32% CPU
+```
+
+for the combined Flask workload.
+
+Because:
+
+```text
+32% > 20%
+```
+
+the Grafana alert transitioned to:
+
+```text
+Firing
+```
+
+This confirmed that the complete monitoring and alerting pipeline was working:
+
+```text
+Flask Pod
+    |
+    v
+Kubernetes container metrics
+    |
+    v
+Prometheus
+    |
+    v
+PromQL
+    |
+    v
+Grafana Alert Rule
+    |
+    v
+Flask High CPU
+    |
+    v
+Notification Contact Point
+```
+
+After testing, the threshold should be returned to the intended production/demo value and the CPU-generating process should be stopped.
+
+---
+
+## 15.12 Monitoring Commands
+
+Check monitoring Pods:
+
+```bash
+kubectl get pods -n monitoring
+```
+
+Check monitoring Services:
+
+```bash
+kubectl get svc -n monitoring
+```
+
+Check Prometheus:
+
+```bash
+kubectl get pods -n monitoring | grep prometheus
+```
+
+Check Grafana:
+
+```bash
+kubectl get pods -n monitoring | grep grafana
+```
+
+Check Alertmanager:
+
+```bash
+kubectl get pods -n monitoring | grep alertmanager
+```
+
+Check resource usage:
+
+```bash
+kubectl top pods
+```
+
+Check node usage:
+
+```bash
+kubectl top nodes
+```
+
+Check Helm releases:
+
+```bash
+helm list -n monitoring
+```
+
+---
+
+## 15.13 Monitoring Architecture
+
+The final monitoring architecture is:
+
+```text
+                         Flask Application
+                                |
+                                v
+                         Flask Kubernetes Pod
+                                |
+                                v
+                     container CPU metrics
+                                |
+                                v
+                            Prometheus
+                                |
+                     +----------+----------+
+                     |                     |
+                     v                     v
+                PromQL Query         Time Series Data
+                     |
+                     v
+                   Grafana
+                     |
+              +------+------+
+              |             |
+              v             v
+          Dashboard      Alert Rule
+                            |
+                            v
+                     Flask High CPU
+                            |
+                            v
+                    Alert Contact Point
+```
+
+This monitoring setup provides visibility into the resource usage of the Flask application and demonstrates how Kubernetes metrics can be collected, queried, visualized, and used for alerting.
+
+---
+
+## 15.14 Reproducing the Monitoring Setup
+
+A new environment can install the monitoring stack with:
+
+```bash
+helm repo add prometheus-community \
+  https://prometheus-community.github.io/helm-charts
+
+helm repo update
+
+helm install monitoring \
+  prometheus-community/kube-prometheus-stack \
+  -n monitoring \
+  --create-namespace
+```
+
+Verify:
+
+```bash
+kubectl get pods -n monitoring
+```
+
+Access Grafana:
+
+```bash
+kubectl port-forward -n monitoring \
+  svc/monitoring-grafana 3000:80
+```
+
+Access Prometheus:
+
+```bash
+kubectl port-forward -n monitoring \
+  svc/monitoring-kube-prometheus-prometheus 9090:9090
+```
+
+Then open:
+
+```text
+Grafana:    http://localhost:3000
+Prometheus: http://localhost:9090
+```
+
+The Grafana alert rule itself should be recreated through Grafana or stored separately as provisioning/configuration if automated monitoring deployment is required.
+
+---
+
+## 15.15 Monitoring Result
+
+The monitoring exercise successfully demonstrated:
+
+```text
+Prometheus installation       ✓
+Grafana installation          ✓
+Kubernetes metrics collection ✓
+PromQL CPU query              ✓
+Grafana visualization         ✓
+CPU alert creation            ✓
+CPU load generation           ✓
+Alert state: Firing           ✓
+Alert notification path       ✓
+```
+
+This extends the project from application deployment and CI/CD into **observability and automated alerting**.
 
 ---
 

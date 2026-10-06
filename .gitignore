@@ -12,3 +12,5 @@ venv/
 # Editor/OS files
 .vscode/
 .idea/
+
+.pytest_cache/
